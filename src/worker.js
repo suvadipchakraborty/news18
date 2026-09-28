@@ -17,7 +17,7 @@ async function pages(url) {
   const date = url.searchParams.get("date") || "";
   const span = Math.min(2, Math.max(0, parseInt(url.searchParams.get("span") || "0", 10) || 0));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "Invalid date" }, 400);
-  const upstream = `${LOC}?dl=page&start_date=${shift(date, -span)}&end_date=${shift(date, span)}&fo=json&c=100`;
+  const upstream = `${LOC}?dl=page&dates=${shift(date, -span)}/${shift(date, span)}&fo=json&c=100`;
   try {
     const r = await fetch(upstream, {
       headers: { Accept: "application/json", "User-Agent": UA },
