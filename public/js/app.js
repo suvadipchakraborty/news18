@@ -14,6 +14,23 @@ function twoCenturiesAgo() {
 let current = twoCenturiesAgo(), shown = current, pages = [], reqId = 0;
 
 // ---- data ----
+const LOC = "https://www.loc.gov/collections/chronicling-america/";
+async function getDay(day) {
+  let why = "";
+  try {
+    const r = await fetch("/api/pages?date=" + day);
+    if (r.ok) return await r.json();
+    let d = {}; try { d = await r.json(); } catch (e) {}
+    why = d.upstream_status ? "archive said " + d.upstream_status : "server said " + r.status;
+  } catch (e) { why = "network error"; }
+  // Fallback: ask the Library of Congress directly from the browser
+  try {
+    const r = await fetch(`${LOC}?dl=page&start_date=${day}&end_date=${day}&fo=json&c=100`);
+    if (r.ok) return await r.json();
+    why += "; direct " + r.status;
+  } catch (e) { why += "; direct request blocked"; }
+  throw new Error(why);
+}
 async function load(iso) {
   const id = ++reqId;
   $("#grid").innerHTML = ""; $("#notice").hidden = true;
@@ -21,18 +38,21 @@ async function load(iso) {
   $("#welcome").textContent = "Welcome to " + fmt(iso);
   $("#date").value = iso; current = iso;
   let found = [], used = iso;
+  let failure = "";
   try {
     for (const off of [0, -1, 1, -2, 2]) {
       const day = shift(iso, off);
-      const r = await fetch("/api/pages?date=" + day);
+      const data = await getDay(day);
       if (id !== reqId) return;
-      if (!r.ok) throw new Error("bad status");
-      const data = await r.json();
       found = normalize(data.results || []);
       if (found.length) { used = day; break; }
     }
   } catch (e) {
-    $("#status").textContent = "The archive didn't answer. Check your connection and try again.";
+    failure = e.message;
+  }
+  if (id !== reqId) return;
+  if (failure) {
+    $("#status").textContent = "The archive didn't answer (" + failure + "). Tap a date arrow to retry.";
     return;
   }
   if (id !== reqId) return;
