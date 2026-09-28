@@ -35,7 +35,7 @@ async function getData(day, span) {
   } catch (e) { why = "network error"; }
   try { // fallback: ask the Library of Congress straight from the browser
     await slot();
-    const r = await fetch(`${LOC}?dl=page&dates=${shift(day, -span)}/${shift(day, span)}&fo=json&c=100`);
+    const r = await fetch(`${LOC}?dl=page&start_date=${shift(day, -span)}&end_date=${shift(day, span)}&fo=json&c=100`);
     if (r.ok) return remember(key, await r.json());
     why += "; direct " + r.status;
   } catch (e) { why += "; direct request blocked"; }
