@@ -1,0 +1,9 @@
+name = "news18"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# Only /api/* runs the Worker first; everything else is served as a static asset.
+run_worker_first = ["/api/*"]
