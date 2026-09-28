@@ -14,23 +14,35 @@ function twoCenturiesAgo() {
 let current = twoCenturiesAgo(), shown = current, pages = [], reqId = 0;
 
 // ---- data ----
+// loc.gov allows about 20 requests/minute per IP and blocks for an hour beyond that,
+// so: at most one request per date (a second only when that day is empty), a throttle, and a session cache.
 const LOC = "https://www.loc.gov/collections/chronicling-america/";
-async function getDay(day) {
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let lastCall = 0;
+async function slot() { const w = Math.max(0, lastCall + 3200 - Date.now()); lastCall = Date.now() + w; if (w) await sleep(w); }
+
+async function getData(day, span) {
+  const key = `ca:${day}:${span}`;
+  try { const c = sessionStorage.getItem(key); if (c) return JSON.parse(c); } catch (e) {}
   let why = "";
+  await slot();
   try {
-    const r = await fetch("/api/pages?date=" + day);
-    if (r.ok) return await r.json();
+    const r = await fetch(`/api/pages?date=${day}&span=${span}`);
+    if (r.ok) return remember(key, await r.json());
     let d = {}; try { d = await r.json(); } catch (e) {}
     why = d.upstream_status ? "archive said " + d.upstream_status : "server said " + r.status;
+    if (d.upstream_status === 429 || d.upstream_status === 403) why += " — too many requests, wait a few minutes";
   } catch (e) { why = "network error"; }
-  // Fallback: ask the Library of Congress directly from the browser
-  try {
-    const r = await fetch(`${LOC}?dl=page&start_date=${day}&end_date=${day}&fo=json&c=100`);
-    if (r.ok) return await r.json();
+  try { // fallback: ask the Library of Congress straight from the browser
+    await slot();
+    const r = await fetch(`${LOC}?dl=page&start_date=${shift(day, -span)}&end_date=${shift(day, span)}&fo=json&c=100`);
+    if (r.ok) return remember(key, await r.json());
     why += "; direct " + r.status;
   } catch (e) { why += "; direct request blocked"; }
   throw new Error(why);
 }
+function remember(key, data) { try { sessionStorage.setItem(key, JSON.stringify(data)); } catch (e) {} return data; }
+
 async function load(iso) {
   const id = ++reqId;
   $("#grid").innerHTML = ""; $("#notice").hidden = true;
@@ -38,24 +50,23 @@ async function load(iso) {
   $("#welcome").textContent = "Welcome to " + fmt(iso);
   $("#date").value = iso; current = iso;
   let found = [], used = iso;
-  let failure = "";
   try {
-    for (const off of [0, -1, 1, -2, 2]) {
-      const day = shift(iso, off);
-      const data = await getDay(day);
+    found = normalize((await getData(iso, 0)).results || []);
+    if (id !== reqId) return;
+    if (!found.length) {
+      const near = normalize((await getData(iso, 2)).results || []);
       if (id !== reqId) return;
-      found = normalize(data.results || []);
-      if (found.length) { used = day; break; }
+      if (near.length) {
+        const dist = d => Math.abs(new Date(d + "T12:00:00Z") - new Date(iso + "T12:00:00Z")) + (d < iso ? 1 : 0);
+        used = near.map(p => p.date).filter(Boolean).sort((x, y) => dist(x) - dist(y))[0] || iso;
+        found = near.filter(p => p.date === used);
+      }
     }
   } catch (e) {
-    failure = e.message;
-  }
-  if (id !== reqId) return;
-  if (failure) {
-    $("#status").textContent = "The archive didn't answer (" + failure + "). Tap a date arrow to retry.";
+    if (id !== reqId) return;
+    $("#status").textContent = "The archive didn't answer (" + e.message + "). Tap a date arrow to retry.";
     return;
   }
-  if (id !== reqId) return;
   pages = found; shown = used;
   if (!pages.length) { $("#status").textContent = "No digitized newspapers found within two days of " + fmt(iso) + ". Try another date."; return; }
   if (used !== iso) {
@@ -73,7 +84,7 @@ function normalize(results) {
     const num = parseInt(String(r.number_page || r.page || "").replace(/\D/g, ""), 10) || 0;
     return {
       title: String(r.partof_title || r.title || "Untitled newspaper").replace(/\s*\[volume\].*$/i, ""),
-      thumb: imgs[0], full: big, num,
+      thumb: imgs[0], full: big, num, date: String(r.date || "").slice(0, 10),
       place: place.length ? place.map(p => p.replace(/\b\w/g, c => c.toUpperCase())).join(", ") : "",
       url: r.url || r.id || "https://www.loc.gov/collections/chronicling-america/",
     };
