@@ -1,0 +1,7 @@
+{
+  "name": "news18-worker",
+  "private": true,
+  "devDependencies": {
+    "@cloudflare/puppeteer": "^1.0.4"
+  }
+}
