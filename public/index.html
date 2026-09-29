@@ -98,13 +98,13 @@
     </div>
     <div class="vtools">
       <button id="loupe" class="vbtn" aria-pressed="false" title="Magnifier: press and hold on the page to enlarge small print"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 8v5M8 10.5h5"/></svg><span>Magnifier</span></button>
-      <a id="vsource" class="vbtn" target="_blank" rel="noopener" title="Open the original record at the Library of Congress"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span>Original</span></a>
-      <button id="vshare" class="vbtn" aria-label="Share this page"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-4M8.6 13.4l6.8 4"/></svg><span>Share</span></button>
+      <a id="vsource" hidden aria-hidden="true"></a>
+      <button id="vshare" hidden aria-hidden="true" tabindex="-1"></button>
+      <p class="vhint">
+        <span class="h-off">Pinch or double-tap to zoom. Drag to move around.</span>
+        <span class="h-on">Magnifier on: press and hold on the page to read small print.</span>
+      </p>
     </div>
-    <p class="vhint">
-      <span class="h-off">Pinch or double-tap to zoom. Drag to move around.</span>
-      <span class="h-on">Magnifier on: press and hold on the page to read small print.</span>
-    </p>
   </div>
   <div class="stage" id="stage"><img id="vimg" alt="" draggable="false"><div id="lens" hidden></div></div>
 </div>
