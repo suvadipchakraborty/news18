@@ -11,4 +11,4 @@ run_worker_first = true
 
 [vars]
 # Paste your deployed Apps Script web app URL (ends in /exec)
-SHEET_API_URL = ""
+SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxAr0-BX2f31OtMAksAX-gcKaGUMrpiVIsn9nad1tmFrKEMrYyYinWjrzGUquc2OTvPTQ/exec"
