@@ -29,21 +29,41 @@ async function pages(url) {
   const date = url.searchParams.get("date") || "";
   const span = Math.min(2, Math.max(0, parseInt(url.searchParams.get("span") || "0", 10) || 0));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "Invalid date" }, 400);
-  const upstream = `${LOC}?dl=page&start_date=${shift(date, -span)}&end_date=${shift(date, span)}&fo=json&c=100`;
+  const target = `${LOC}?dl=page&start_date=${shift(date, -span)}&end_date=${shift(date, span)}&fo=json&c=100`;
+
+  // Attempt 1: fetch loc.gov directly, in case the block above has lifted.
+  let attempt = await tryFetch(target, { headers: BROWSER_HEADERS });
+  if (attempt.ok) return attempt.response;
+
+  // Attempt 2: relay the same request through a public proxy that fetches from a
+  // different IP range than Cloudflare Workers, since loc.gov's block appears to be
+  // network-level rather than header-based.
+  const relay = "https://api.allorigins.win/raw?url=" + encodeURIComponent(target);
+  const attempt2 = await tryFetch(relay, { headers: { Accept: "application/json" } });
+  if (attempt2.ok) return attempt2.response;
+
+  return json({
+    error: "Upstream failed",
+    upstream_status: attempt.status,
+    server: attempt.server,
+    detail: attempt.detail,
+    relay_status: attempt2.status,
+    relay_detail: attempt2.detail,
+  }, 502);
+}
+
+async function tryFetch(u, opts) {
   try {
-    const r = await fetch(upstream, {
-      headers: BROWSER_HEADERS,
-      cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 604800, "300-599": 0 } },
-    });
+    const r = await fetch(u, { ...opts, cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 604800, "300-599": 0 } } });
     const body = await r.text();
     if (r.ok && body.trim().startsWith("{")) {
-      return new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=86400" } });
+      return { ok: true, response: new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=86400" } }) };
     }
     const server = r.headers.get("server") || "";
     const snippet = body.trim().startsWith("<") ? (body.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || "HTML block page") : body.slice(0, 150);
-    return json({ error: "Upstream failed", upstream_status: r.status, server, detail: snippet }, 502);
+    return { ok: false, status: r.status, server, detail: snippet };
   } catch (e) {
-    return json({ error: "Upstream unreachable", upstream_status: 0, detail: String(e).slice(0, 150) }, 502);
+    return { ok: false, status: 0, server: "", detail: String(e).slice(0, 150) };
   }
 }
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json" } });
