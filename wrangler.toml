@@ -1,6 +1,10 @@
 name = "news18"
 main = "src/worker.js"
 compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Real headless browser, used only when a plain fetch to loc.gov is blocked.
+browser = { binding = "MYBROWSER" }
 
 [assets]
 directory = "./public"
